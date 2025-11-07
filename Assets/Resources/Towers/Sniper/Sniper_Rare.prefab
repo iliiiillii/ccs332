@@ -98,17 +98,27 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 7a934ae7e7422b541aab3972acff8266, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  grade: 0
-  towerType: 0
+  grade: 1
+  towerType: 1
   attackRange: 0
   attackCooldown: 0
   attackDamage: 0
   monsterLayerMask:
     serializedVersion: 2
     m_Bits: 192
-  projectilePrefab: {fileID: 9033852405246900961, guid: d1a3027b1303d8344bbcdfc09b2a3352, type: 3}
   attackEffectPrefab: {fileID: 5798057674586882975, guid: aa717731faa2da3408dfb23601dd5468, type: 3}
+  projectilePrefab: {fileID: 9033852405246900961, guid: d1a3027b1303d8344bbcdfc09b2a3352, type: 3}
   muzzlePoint: {fileID: 0}
+  splashAreaEffectPrefab: {fileID: 0}
+  splashHitEffectPrefab: {fileID: 0}
+  slowEffectPrefab: {fileID: 0}
+  poisonEffectPrefab: {fileID: 0}
+  fireAreaEffectPrefab: {fileID: 0}
+  lightningEffectPrefab: {fileID: 0}
+  freezeEffectPrefab: {fileID: 0}
+  towerLayerMask:
+    serializedVersion: 2
+    m_Bits: 0
 --- !u!61 &-3218051989795301456
 BoxCollider2D:
   m_ObjectHideFlags: 0

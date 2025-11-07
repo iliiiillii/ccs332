@@ -75,7 +75,7 @@ SpriteRenderer:
   m_SortingLayerID: 0
   m_SortingLayer: 0
   m_SortingOrder: 3
-  m_Sprite: {fileID: 7482667652216324306, guid: 311925a002f4447b3a28927169b83ea6, type: 3}
+  m_Sprite: {fileID: 21300000, guid: 7898d6bb9da93c046b40db437cc30d50, type: 3}
   m_Color: {r: 1, g: 1, b: 1, a: 1}
   m_FlipX: 0
   m_FlipY: 0
@@ -104,6 +104,19 @@ MonoBehaviour:
   attackCooldown: 0
   attackDamage: 0
   monsterLayerMask:
+    serializedVersion: 2
+    m_Bits: 192
+  attackEffectPrefab: {fileID: 0}
+  projectilePrefab: {fileID: 0}
+  muzzlePoint: {fileID: 0}
+  splashAreaEffectPrefab: {fileID: 0}
+  splashHitEffectPrefab: {fileID: 0}
+  slowEffectPrefab: {fileID: 0}
+  poisonEffectPrefab: {fileID: 0}
+  fireAreaEffectPrefab: {fileID: 6999496962996501266, guid: d1bd446f730fafe45bd171c99ac9f555, type: 3}
+  lightningEffectPrefab: {fileID: 0}
+  freezeEffectPrefab: {fileID: 0}
+  towerLayerMask:
     serializedVersion: 2
     m_Bits: 0
 --- !u!61 &8033897024189044258
@@ -142,7 +155,7 @@ BoxCollider2D:
   m_SpriteTilingProperty:
     border: {x: 0, y: 0, z: 0, w: 0}
     pivot: {x: 0.5, y: 0.5}
-    oldSize: {x: 1, y: 1}
+    oldSize: {x: 1.6666666, y: 1.6666666}
     newSize: {x: 1, y: 1}
     adaptiveTilingThreshold: 0.5
     drawMode: 0

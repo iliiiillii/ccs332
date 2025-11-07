@@ -106,12 +106,19 @@ MonoBehaviour:
   monsterLayerMask:
     serializedVersion: 2
     m_Bits: 192
+  attackEffectPrefab: {fileID: 5798057674586882975, guid: 712214810f5eafa48ba8737902b690e6, type: 3}
+  projectilePrefab: {fileID: 9033852405246900961, guid: bb69e0155979f7240b2988388096c951, type: 3}
+  muzzlePoint: {fileID: 0}
   splashAreaEffectPrefab: {fileID: 0}
   splashHitEffectPrefab: {fileID: 0}
-  projectilePrefab: {fileID: 9033852405246900961, guid: bb69e0155979f7240b2988388096c951, type: 3}
-  attackEffectPrefab: {fileID: 5798057674586882975, guid: 712214810f5eafa48ba8737902b690e6, type: 3}
-  muzzlePoint: {fileID: 0}
   slowEffectPrefab: {fileID: 0}
+  poisonEffectPrefab: {fileID: 0}
+  fireAreaEffectPrefab: {fileID: 0}
+  lightningEffectPrefab: {fileID: 0}
+  freezeEffectPrefab: {fileID: 0}
+  towerLayerMask:
+    serializedVersion: 2
+    m_Bits: 0
 --- !u!61 &-2492106422454615962
 BoxCollider2D:
   m_ObjectHideFlags: 0
@@ -141,7 +148,7 @@ BoxCollider2D:
   m_CallbackLayers:
     serializedVersion: 2
     m_Bits: 4294967295
-  m_IsTrigger: 1
+  m_IsTrigger: 0
   m_UsedByEffector: 0
   m_UsedByComposite: 0
   m_Offset: {x: 0, y: 0}

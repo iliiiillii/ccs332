@@ -2,11 +2,19 @@
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI; // Button 사용을 위해 추가
+using UnityEngine.Audio;
 using TMPro;
 
 public class UIManager : MonoBehaviour
 {
     public static UIManager Instance { get; private set; }
+
+    [Header("Audio Settings")]
+    public AudioMixer gameAudioMixer;   // 믹서 에셋 연결용
+    public GameObject settingsPanel;    // 설정 패널 (Slider를 담을 팝업창)
+    public Button soundToggleButton;    // 소리 아이콘 버튼
+    public Slider bgmSlider;            // BGM 슬라이더
+    public Slider sfxSlider;
 
     [Header("UI Panels")]
     public GameObject achievementPanel; // Inspector에서 Achievement_Panel 오브젝트를 연결할 변수
@@ -16,6 +24,7 @@ public class UIManager : MonoBehaviour
     public TMP_Text waveCountText;
     public TMP_Text goldText;
     public Button summonButton; // 타워 소환 버튼
+
 
     [Header("Main Menu UI Elements")]
     public GameObject startPanel; // 새 게임, 이어하기, 저장하기 버튼이 있는 패널
@@ -61,6 +70,9 @@ public class UIManager : MonoBehaviour
         if (gameOverPanel != null) gameOverPanel.SetActive(false);
         if (achievementText != null) achievementText.gameObject.SetActive(false);
         if (systemMessageText != null) systemMessageText.gameObject.SetActive(false);
+
+        // [추가]: 설정 패널 초기 상태 설정
+        if (settingsPanel != null) settingsPanel.SetActive(false);
     }
 
     /// <summary>
@@ -77,6 +89,7 @@ public class UIManager : MonoBehaviour
         Debug.Log($"[🧩] UIManager Start 실행됨");
         SetupMainMenuButtons(); // 메인 메뉴 버튼 상태 설정
         LinkButtonEvents(); // 버튼 이벤트 연결
+        LinkAudioControls();
 
         if (gameSpeedButton != null)
             gameSpeedButton.onClick.AddListener(GameManager.Instance.CycleGameSpeed);
@@ -88,8 +101,6 @@ public class UIManager : MonoBehaviour
         if (GameManager.Instance != null && GameManager.Instance.OnGoldChanged != null)
         {
             GameManager.Instance.OnGoldChanged.AddListener(UpdateGoldUI);
-            // 초기 골드 업데이트는 GameManager.StartGameLogic() 또는 LoadPlayerData() 후 호출되는 OnGoldChanged에 의해 처리됨
-            // UpdateGoldUI(GameManager.Instance.gold); // 여기서 호출하면 GameManager.Awake보다 빠를 수 있음
         }
         else
         {
@@ -114,14 +125,21 @@ public class UIManager : MonoBehaviour
         else
             Debug.LogWarning("Save Game Button이 UIManager에 연결되지 않았습니다.");
 
-        // 타워 소환 버튼 연결 (기존 OnSummonButtonClick 함수가 있다면 그것을 사용)
         if (summonButton != null)
-            summonButton.onClick.AddListener(OnSummonButtonClick); // OnSummonButtonClick 함수는 이미 public으로 존재
+            summonButton.onClick.AddListener(OnSummonButtonClick);
 
         if (gameSpeedButton != null)
             gameSpeedButton.onClick.AddListener(GameManager.Instance.CycleGameSpeed);
         else
             Debug.LogWarning("GameSpeedButton이 UIManager에 연결되지 않았습니다.");
+
+        // [추가]: 사운드 토글 버튼 연결
+        if (soundToggleButton != null)
+            soundToggleButton.onClick.AddListener(ToggleSettingsPanel);
+        else
+            Debug.LogWarning("Sound Toggle Button이 UIManager에 연결되지 않았습니다.");
+
+        LinkAudioControls(); // Start 함수로 이동했으므로 여기서 제거 가능 (Start에서 한 번만 호출됨)
     }
 
     public void SetupMainMenuButtons()
@@ -129,11 +147,8 @@ public class UIManager : MonoBehaviour
         // "이어하기" 버튼 활성화/비활성화 로직
         if (continueButton != null && DataManager.Instance != null && DataManager.Instance.CurrentPlayerData != null)
         {
-            // 저장된 데이터가 있는지 (예: currentWave가 1보다 큰지, 또는 별도의 플래그 확인)
             bool hasSaveData = DataManager.Instance.CurrentPlayerData.currentWave > 1 ||
-                               (DataManager.Instance.CurrentPlayerData.currentWave == 1 && DataManager.Instance.CurrentPlayerData.gold != 100); // 새 게임 기본값과 다른지
-            // 또는 DataManager에 File.Exists(saveFilePath)를 확인하는 public 함수를 만들어 사용
-            // bool hasSaveData = DataManager.Instance.CheckIfSaveFileExists();
+                               (DataManager.Instance.CurrentPlayerData.currentWave == 1 && DataManager.Instance.CurrentPlayerData.gold != 100);
 
             continueButton.interactable = hasSaveData;
             if (hasSaveData) Debug.Log("UIManager: 이어하기 버튼 활성화.");
@@ -141,11 +156,10 @@ public class UIManager : MonoBehaviour
         }
         else if (continueButton != null)
         {
-            continueButton.interactable = false; // DataManager가 준비되지 않았으면 비활성화
+            continueButton.interactable = false;
             Debug.LogWarning("UIManager: DataManager.Instance 또는 CurrentPlayerData가 null이므로 이어하기 버튼 비활성화.");
         }
 
-        // "게임 저장" 버튼은 게임 플레이 중에만 활성화 (예: canvasGame이 활성화될 때)
         if (saveGameButton != null)
         {
             saveGameButton.gameObject.SetActive(canvasGame != null && canvasGame.activeSelf);
@@ -182,6 +196,19 @@ public class UIManager : MonoBehaviour
         }
     }
 
+    // [추가]: 설정 패널을 켜고 끄는 토글 함수
+    public void ToggleSettingsPanel()
+    {
+        if (settingsPanel == null)
+        {
+            Debug.LogError("SettingsPanel이 UIManager에 연결되지 않아 토글할 수 없습니다!");
+            return;
+        }
+
+        // 패널 상태를 반전시킵니다.
+        bool isActive = settingsPanel.activeSelf;
+        settingsPanel.SetActive(!isActive);
+    }
 
     public void ShowSummonButton(bool show)
     {
@@ -190,23 +217,20 @@ public class UIManager : MonoBehaviour
     }
 
     // 게임 시작 시 호출 (메인 메뉴 UI 숨기고 게임 UI 표시)
-    public void HideStartUI() // 이 함수는 GameManager.StartGameLogic에서 호출
+    public void HideStartUI()
     {
         if (startPanel != null) startPanel.SetActive(false);
         if (canvasMenu != null) canvasMenu.SetActive(false);
         if (canvasGame != null) canvasGame.SetActive(true);
 
-        // 게임이 시작되면 "게임 저장" 버튼을 활성화할 수 있음
         if (saveGameButton != null)
         {
             saveGameButton.gameObject.SetActive(true);
         }
-        // 게임 시작 시 타워 소환 버튼 상태는 게임 로직에 따라 결정
-        // ShowSummonButton(true); // 예시: 게임 시작 시 바로 소환 가능하게
     }
 
     // 게임 종료 또는 메인 메뉴로 돌아갈 때 호출될 수 있는 함수 (선택적)
-    public void ShowStartUI() // 예: 게임오버 후 "메인으로" 버튼 클릭 시
+    public void ShowStartUI()
     {
         if (startPanel != null) startPanel.SetActive(true);
         if (canvasMenu != null) canvasMenu.SetActive(true);
@@ -237,15 +261,6 @@ public class UIManager : MonoBehaviour
         if (TileScript.selectedTile == null || TileScript.selectedTile.isOccupied)
             return;
 
-        // 1) 비용 차감 로직 제거
-        // int cost = 50;
-        // if (!GameManager.Instance.SpendGold(cost))
-        // {
-        //     Debug.Log("골드 부족 또는 GameManager.Instance 없음!");
-        //     return;
-        // }
-
-        // 2) 바로 SummonManager에 소환 요청
         if (SummonManager.Instance == null)
         {
             Debug.LogWarning("SummonManager.Instance가 null입니다.");
@@ -353,6 +368,53 @@ public class UIManager : MonoBehaviour
         }
     }
 
+    void LinkAudioControls()
+    {
+        if (bgmSlider != null)
+        {
+            // 슬라이더 값이 변경될 때 SetBGMVolume 함수 호출
+            bgmSlider.onValueChanged.AddListener(SetBGMVolume);
+            // 초기값 설정 (저장된 값이 있다면 로드, 없으면 1f)
+            SetBGMVolume(bgmSlider.value);
+        }
+        if (sfxSlider != null)
+        {
+            // 슬라이더 값이 변경될 때 SetSFXVolume 함수 호출
+            sfxSlider.onValueChanged.AddListener(SetSFXVolume);
+            SetSFXVolume(sfxSlider.value);
+        }
+    }
+    public void SetBGMVolume(float volume) // volume은 0.0 ~ 1.0 사이의 슬라이더 값입니다.
+    {
+        if (gameAudioMixer == null) return;
+
+        // 로그 스케일을 사용하여 슬라이더 값(0~1)을 믹서 값(-80dB~0dB)으로 변환합니다.
+        // volume이 0일 때 -80dB (음소거), volume이 1일 때 0dB (최대)
+        float mixerVolume = Mathf.Log10(volume) * 20;
+
+        // Mathf.Log10(0)은 무한대가 되므로, volume이 0일 때 -80dB로 강제 설정합니다.
+        if (volume == 0)
+        {
+            mixerVolume = -80f;
+        }
+
+        gameAudioMixer.SetFloat("BGMVolume", mixerVolume);
+    }
+
+    // SFX 볼륨 조절 함수
+    public void SetSFXVolume(float volume)
+    {
+        if (gameAudioMixer == null) return;
+
+        float mixerVolume = Mathf.Log10(volume) * 20;
+
+        if (volume == 0)
+        {
+            mixerVolume = -80f;
+        }
+
+        gameAudioMixer.SetFloat("SFXVolume", mixerVolume);
+    }
     public void OnClickQuitButton()
     {
         Debug.Log("UI - 게임 종료 버튼 클릭됨");

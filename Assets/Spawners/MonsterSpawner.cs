@@ -1,7 +1,7 @@
 ﻿using System.Collections;
-using System.Collections.Generic; // List 사용을 위해 추가
+using System.Collections.Generic;
 using UnityEngine;
-using System.Linq; // Linq 사용을 위해 추가
+using System.Linq;
 
 public class MonsterSpawner : MonoBehaviour
 {
@@ -9,7 +9,8 @@ public class MonsterSpawner : MonoBehaviour
 
     public float defaultSpawnInterval = 0.5f;
 
-    private Transform startTile; // 몬스터 스폰 위치
+    // [수정됨]: startTile 대신 startPosition (Vector3)을 사용
+    private Vector3 startPosition;
 
     private void Awake()
     {
@@ -30,25 +31,37 @@ public class MonsterSpawner : MonoBehaviour
 
     public void InitializeSpawnPoint()
     {
-        if (MapGenerator.Instance != null && MapGenerator.Instance.monsterStartTileTransform != null)
+        if (MapGenerator.Instance != null)
         {
-            startTile = MapGenerator.Instance.monsterStartTileTransform;
-            Debug.Log($"MonsterSpawner: 시작 타일 '{startTile.name}' (MapGenerator로부터 참조 받음) 설정 완료. 위치: {startTile.position}");
+            // [핵심 해결]: GetPathWaypoints()를 직접 호출하여 Transform을 생성하고 위치를 가져옵니다.
+            List<Transform> pathWaypoints = MapGenerator.Instance.GetPathWaypoints();
+
+            if (pathWaypoints != null && pathWaypoints.Count > 0)
+            {
+                // [수정됨]: startPosition에 Vector3 값을 할당
+                startPosition = pathWaypoints[0].position;
+
+                // [수정됨]: Debug.Log에서 startTile 대신 startPosition을 사용
+                Debug.Log($"MonsterSpawner: 시작 위치 (경로의 첫 번째 지점) 설정 완료. 위치: {startPosition}");
+            }
+            else
+            {
+                Debug.LogError("MonsterSpawner: MapGenerator로부터 시작 경로를 가져올 수 없거나 경로가 비어있습니다!");
+            }
         }
         else
         {
-            Debug.LogError("MonsterSpawner: MapGenerator로부터 시작 타일 참조를 가져올 수 없습니다!");
-            if (MapGenerator.Instance == null) Debug.LogError(" - MapGenerator.Instance is null");
-            else if (MapGenerator.Instance.monsterStartTileTransform == null) Debug.LogError(" - MapGenerator.Instance.monsterStartTileTransform is null");
+            Debug.LogError("MonsterSpawner: MapGenerator.Instance가 null이라 초기화할 수 없습니다!");
         }
     }
 
     public void StartWave(int waveNumber)
     {
         Debug.Log($"MonsterSpawner: StartWave({waveNumber}) 호출됨.");
-        if (startTile == null)
+        // [수정됨]: startTile 대신 startPosition을 Vector3.zero와 비교
+        if (startPosition == Vector3.zero)
         {
-            Debug.LogError("MonsterSpawner: 시작 타일이 설정되지 않아 웨이브를 시작할 수 없습니다.");
+            Debug.LogError("MonsterSpawner: 시작 위치가 설정되지 않아 웨이브를 시작할 수 없습니다. InitializeSpawnPoint()를 확인하세요.");
             if (GameManager.Instance != null) GameManager.Instance.OnWaveEnd();
             return;
         }
@@ -98,6 +111,9 @@ public class MonsterSpawner : MonoBehaviour
                 yield break; // 경로 없으면 웨이브 진행 불가
             }
             Debug.Log($"MonsterSpawner: MapGenerator로부터 {pathWaypointsForThisWave.Count}개의 웨이포인트 받음 (Wave {waveNumber}).");
+
+            // 웨이브 시작 시에도 혹시 모를 startPosition 불일치를 대비해 갱신
+            startPosition = pathWaypointsForThisWave[0].position;
         }
         else
         {
@@ -113,14 +129,18 @@ public class MonsterSpawner : MonoBehaviour
             WaveDefinitionRecord waveDef = waveCompositions[waveCompIndex];
             MonsterDataRecord monsterBaseData = DatabaseManager.Instance.monsterDataList.FirstOrDefault(m => m.id == waveDef.monsterDataId);
 
-            if (monsterBaseData == null) { /* ... (오류 처리) ... */ Debug.LogError($"MonsterSpawner: DB에 ID {waveDef.monsterDataId} 몬스터 없음."); continue; }
+            if (monsterBaseData == null) { Debug.LogError($"MonsterSpawner: DB에 ID {waveDef.monsterDataId} 몬스터 없음."); continue; }
             GameObject monsterPrefab = Resources.Load<GameObject>(monsterBaseData.prefabPath);
-            if (monsterPrefab == null) { /* ... (오류 처리) ... */ Debug.LogError($"MonsterSpawner: 프리팹 로드 실패 {monsterBaseData.prefabPath}."); continue; }
+            if (monsterPrefab == null) { Debug.LogError($"MonsterSpawner: 프리팹 로드 실패 {monsterBaseData.prefabPath}."); continue; }
 
             for (int i = 0; i < waveDef.quantity; i++)
             {
-                if (startTile == null) { /* ... (오류 처리) ... */ Debug.LogError("MonsterSpawner: 시작 타일 null (스폰 루프 내부)."); yield break; }
-                GameObject monsterObj = Instantiate(monsterPrefab, startTile.position, Quaternion.identity);
+                // [수정됨]: startTile.position 대신 startPosition 사용
+                if (startPosition == Vector3.zero) { Debug.LogError("MonsterSpawner: 시작 위치 null (스폰 루프 내부)."); yield break; }
+
+                // [수정됨]: startTile.position 대신 startPosition 사용
+                GameObject monsterObj = Instantiate(monsterPrefab, startPosition, Quaternion.identity);
+
                 if (GameManager.Instance != null) GameManager.Instance.MonsterSpawned();
                 // Debug.Log($"MonsterSpawner: Wave {waveNumber} - '{monsterBaseData.monsterName}' #{i + 1} 스폰됨.");
 
@@ -141,7 +161,6 @@ public class MonsterSpawner : MonoBehaviour
                 if (movement != null)
                 {
                     movement.moveSpeed = monsterBaseData.baseSpeed * waveDef.speedMultiplier;
-                    // <<< 수정된 부분: 가져온 경로 정보 전달 >>>
                     movement.InitializePath(pathWaypointsForThisWave);
                 }
                 else
